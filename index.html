@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ASR Example</title>
+    <style>
+        ul {
+            list-style-type: none;
+            /* Remove bullet points */
+        }
+
+        body {
+            background-image: url('/images/wall');
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-size: 100% 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+            background-color: #f5e8df;
+            perspective: 1px;
+            /* Required for animation effect */
+            animation: breathe 6s infinite alternate;
+            background: linear-gradient(135deg, #f9c975, #f5c392, #d7b897, #c2a5a2);
+
+
+        }
+
+
+
+        @keyframes breathe {
+            0% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(1.02);
+            }
+        }
+
+        .content {
+            text-align: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+
+        .snowflake {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #fff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-10px);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: translateY(calc(100vh + 10px));
+            }
+        }
+
+        @keyframes gradientChange {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
+        #container {
+            background-color: #222;
+            /* Dark color for container */
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 60%;
+            /* Increase container size */
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #FF6B00;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #FF8C00;
+        }
+
+        #transcription {
+            margin: 20px 0;
+            font-size: 18px;
+        }
+
+        #taskLabel {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.413);
+            border-radius: 5px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        ul li:hover {
+            background-color: rgba(255, 255, 255, 0.527);
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        /* Dynamic Characters */
+        .dynamic-character {
+            position: absolute;
+            font-size: 32px;
+            color: #FF6B00;
+            animation: moveCharacter 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes moveCharacter {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(100px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <button id="startButton">Start Recording</button>
+        <button id="stopButton" disabled>Stop Recording</button>
+        <div id="transcription"></div>
+        <div id="task">
+            <label id="taskLabel">Create a Task:</label>
+        </div>
+        <hr>
+        <div id="currentTasks">
+            <h2>Current Tasks</h2>
+            <ul id="currentTaskList"></ul>
+        </div>
+        <div id="completedTasks">
+            <h2>Completed Tasks</h2>
+            <ul id="completedTaskList"></ul>
+        </div>
+        <!-- <div class="dynamic-character">👀</div> -->
+        <div id="snowfall"></div>
+    </div>
+
+    <script>
+        const snowfallContainer = document.getElementById('snowfall');
+
+        const createSnowflake = () => {
+            const snowflake = document.createElement('div');
+            snowflake.className = 'snowflake';
+            snowflake.style.left = `${Math.random() * window.innerWidth}px`;
+            snowflake.style.animationDuration = `${Math.random() * 3 + 2}s`;
+            snowflake.style.animationDelay = `${Math.random() * 2}s`;
+            snowflake.style.opacity = `${Math.random() * 0.7 + 0.3}`;
+            snowfallContainer.appendChild(snowflake);
+
+            snowflake.addEventListener('animationend', () => {
+                snowflake.remove();
+                createSnowflake();
+            });
+        };
+
+        createSnowflake();
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (typeof SpeechRecognition === 'undefined') {
+            alert('Web Speech API is not supported by this browser. Please use a different browser.');
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+
+            document.getElementById('startButton').addEventListener('click', () => {
+                recognition.start();
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
+            });
+
+            document.getElementById('stopButton').addEventListener('click', () => {
+                recognition.stop();
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            });
+
+            recognition.addEventListener('result', (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('transcription').textContent = transcript;
+                document.getElementById('taskLabel').textContent = 'Task: ' + transcript;
+                document.getElementById('task').style.display = 'block';
+            });
+
+            recognition.addEventListener('end', () => {
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+                const taskText = document.getElementById('taskLabel').textContent;
+                if (taskText) {
+                    const currentTask = document.createElement('li');
+                    currentTask.textContent = taskText;
+                    document.getElementById('currentTaskList').appendChild(currentTask);
+
+                    currentTask.addEventListener('click', () => {
+                        currentTask.remove();
+                        const completedTask = document.createElement('li');
+                        completedTask.textContent = taskText;
+                        document.getElementById('completedTaskList').appendChild(completedTask);
+                    });
+                }
+                document.getElementById('transcription').textContent = '';
+                document.getElementById('taskLabel').textContent = 'Task:';
+            });
+
+            recognition.addEventListener('error', (event) => {
+                alert('ASR Error: ' + event.error);
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            });
+        }
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html>
+
+<head>
+    <title>ASR Example</title>
+</head>
+
+<body>
+    <button id="startButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <div id="transcription"></div>
+    <div id="task">
+        <input type="checkbox" id="taskCheckbox">
+        <label for="taskCheckbox" id="taskLabel">Task:</label>
+    </div>
+    <hr>
+    <div id="completedTasks">
+        <h2>Completed Tasks</h2>
+    </div>
+    <hr>
+    <h2>Upload Audio Recording</h2>
+    <input type="file" accept=".mpeg,.wav" id="audioFileInput">
+    <button id="uploadButton">Upload</button>
+
+    <script>
+        // Check browser support for the Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (typeof SpeechRecognition === 'undefined') {
+            alert('Web Speech API is not supported by this browser. Please use a different browser.');
+        } else {
+            // Create SpeechRecognition instance
+            const recognition = new SpeechRecognition();
+
+            // Set language (optional - default is the user's browser language)
+            recognition.lang = 'en-US'; // Adjust language code as needed
+
+            // Add event listeners
+            document.getElementById('startButton').addEventListener('click', () => {
+                recognition.start();
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
+            });
+
+            document.getElementById('stopButton').addEventListener('click', () => {
+                recognition.stop();
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            });
+
+            recognition.addEventListener('result', (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('transcription').textContent = transcript;
+                document.getElementById('taskLabel').textContent = 'Task: ' + transcript;
+                document.getElementById('taskCheckbox').style.display = 'inline';
+            });
+
+            document.getElementById('taskCheckbox').addEventListener('change', () => {
+                if (document.getElementById('taskCheckbox').checked) {
+                    const taskText = document.getElementById('taskLabel').textContent;
+                    const completedTask = document.createElement('p');
+                    completedTask.textContent = taskText;
+                    document.getElementById('completedTasks').appendChild(completedTask);
+                    document.getElementById('task').style.display = 'none';
+                }
+            });
+
+            recognition.addEventListener('end', () => {
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            });
+
+            recognition.addEventListener('error', (event) => {
+                alert('ASR Error: ' + event.error);
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            });
+
+            // Handle audio file upload
+            document.getElementById('uploadButton').addEventListener('click', () => {
+                const fileInput = document.getElementById('audioFileInput');
+                const uploadedFile = fileInput.files[0];
+                if (uploadedFile) {
+                    const audioTask = document.createElement('div');
+                    audioTask.innerHTML = `
+                        <input type="checkbox" class="audioTaskCheckbox">
+                        <label class="audioTaskLabel">${uploadedFile.name}</label>
+                    `;
+                    document.getElementById('completedTasks').appendChild(audioTask);
+                    fileInput.value = ''; // Clear the file input
+                }
+            });
+        }
+    </script>
+</body>
+
+</html> -->
